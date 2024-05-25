@@ -37,6 +37,8 @@ class StreamHandler(BaseCallbackHandler):
 
 load_dotenv(find_dotenv('info.env'))
 
+# load_dotenv(find_dotenv())
+load_dotenv(dotenv_path='info.env')
 
 # Load and prepare documents
 loader = WebBaseLoader(
