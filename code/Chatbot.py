@@ -35,8 +35,8 @@ class StreamHandler(BaseCallbackHandler):
         self.container.markdown(self.text)
 
 
-load_dotenv(find_dotenv())
-
+# load_dotenv(find_dotenv())
+load_dotenv(dotenv_path='info.env')
 
 # Load and prepare documents
 loader = WebBaseLoader(
