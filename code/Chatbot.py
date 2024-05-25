@@ -1,3 +1,4 @@
+
 from dotenv import load_dotenv, find_dotenv
 from langchain_community.tools.tavily_search import TavilySearchResults
 from langchain_community.document_loaders import WebBaseLoader
@@ -9,7 +10,6 @@ from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain.agents import create_tool_calling_agent
 from langchain.agents import AgentExecutor
-
 
 import streamlit as st
 from langchain.callbacks.base import BaseCallbackHandler
@@ -35,7 +35,7 @@ class StreamHandler(BaseCallbackHandler):
         self.container.markdown(self.text)
 
 
-load_dotenv(find_dotenv())
+load_dotenv(find_dotenv('info.env'))
 
 
 # Load and prepare documents
