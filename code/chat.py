@@ -79,8 +79,8 @@ tools = [retriever_tool] + sql_tool
 
 prompt = ChatPromptTemplate.from_messages(
         [
-        ("system", "You are a very intelligent system. Your first aim is to identify the correct type of agent to use to answer to the user question. \
-                    Once identified, be that agent! The questions could be either or a mysql query or informative query. \
+        ("system", "You are a very intelligent system. Your first aim is to identify the correct tool to use to answer to the user question. \
+                    Once identified, use it! The questions could be either or a mysql query or informative query. \
                     If you recognize a mysql query, identify relevant questions from user and converting into sql queries to generate correct answer. \
                     Please use the below context to write the microsoft sql queries , dont use mysql queries. \
                         MySQL-context: you must query against the connected database, it has total 1 tables , this is transactions transaction table has \
