@@ -2,7 +2,9 @@
 
 ### Introduction and Motivation
 
-![logo](media/ai_pharm.png)
+<div style="text-align: center;">
+    <img src="media/ai_pharm.png" alt="logo" style="width: 50%;">
+</div>
 
 Welcome to the documentation of our virtual pharmacy assistant. This chatbot was developed to improve the efficiency of stock management and to provide quick and precise support to pharmacists. The motivation behind this project stems from the need to optimise the processes of searching for and distributing medicines, reducing waiting times and increasing customer satisfaction.
 
