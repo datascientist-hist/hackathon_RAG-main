@@ -17,34 +17,26 @@ import streamlit as st
 from langchain.callbacks.base import BaseCallbackHandler
 from langchain_community.utilities import SQLDatabase
 
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.runnables import RunnablePassthrough
+from langchain_openai import ChatOpenAI
+from langchain_experimental.sql import SQLDatabaseSequentialChain, SQLDatabaseChain
 
+# FREE DATABASE ONLINE
+# Host: sql8.freesqldatabase.com
+# Database name: sql8709378
+# Database user: sql8709378
+# Database password: pTZ9fzZ2Uk
+# Port number: 3306
 
 # PINECONE_API_KEY = 'dd947cd1-d0b1-481c-8c93-5d2d9a178602' orazio
 # Streaming Handler
-class StreamHandler(BaseCallbackHandler):
-    def __init__(
-        self, container: st.delta_generator.DeltaGenerator, initial_text: str = ""
-    ):
-        self.container = container
-        self.text = initial_text
-        self.run_id_ignore_token = None
 
-    def on_llm_start(self, serialized: dict, prompts: list, **kwargs):
-        # Workaround to prevent showing the rephrased question as output
-        if prompts[0].startswith("Human"):
-            self.run_id_ignore_token = kwargs.get("run_id")
-
-    def on_llm_new_token(self, token: str, **kwargs) -> None:
-        if self.run_id_ignore_token == kwargs.get("run_id", False):
-            return
-        self.text += token
-        self.container.markdown(self.text)
-
-
-load_dotenv(dotenv_path='info.env')
-
+print(load_dotenv(find_dotenv('info.env')))
+os.getenv('OPENAI_API_KEY')
+os.getenv('PINECONE_API_KEY')
 # retrive Pinecone vectorDB
-vector = PineconeVectorStore(embedding=OpenAIEmbeddings(),  index_name=os.getenv('PINECONE_INDEX_NAME'))
+vector = PineconeVectorStore(embedding=OpenAIEmbeddings(openai_api_key=os.getenv('OPENAI_API_KEY')),  index_name=os.getenv('PINECONE_INDEX_NAME'))
 
 # set  searchtype as :
 #   The Maximal Marginal Relevance (MMR) criterion strives to reduce redundancy while maintaining query relevance in re-ranking retrieved documents - Source
@@ -68,7 +60,13 @@ retriever_tool = create_retriever_tool(
 
 # ADDING MYSQL DATABASE TO RUN STATS
 # if you are using MySQL
-mysql_uri = 'mysql+mysqlconnector://root:@localhost:3307/test_db'
+# MySQL connection parameters
+host = 'localhost'  # Or your MySQL server IP address
+port = '3307'  # Default MySQL port
+user = 'root'  # MySQL username
+password = ''  # MySQL password
+database = 'farmaci'  # MySQL database name
+mysql_uri = f'mysql+mysqlconnector://{user}:{password}@{host}:{port}/{database}'
 
 db = SQLDatabase.from_uri(mysql_uri)
 
@@ -77,26 +75,17 @@ tools = [retriever_tool]
 # Initialize the model
 model = ChatOpenAI(model="gpt-4o", streaming=True)
 
-# Define the prompt template
-prompt = ChatPromptTemplate.from_messages(
-    [
-        (
-            "system",
-            "You are a pharmacist. Answer always in the language of the question. If you don't know the answer, just say 'I don't know', don't invent the answer!",
-        ),
-        ("placeholder", "{chat_history}"),
-        ("human", "{input}"),
-        ("placeholder", "{agent_scratchpad}"),
-    ]
-)
+db_chain = SQLDatabaseChain.from_llm(llm=model, db=db, verbose=True,
+                                     return_intermediate_steps=True, top_k=1)
+question = "average of tachipirina sold?"
+response = db_chain(question) 
+print(response)
 
-# Create the agent that decide what tools to call
-# Tool calling allows a model to detect when one or more tools should be called and respond with the inputs that should be passed to those tools.
-agent = create_tool_calling_agent(model, tools, prompt)
-agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
+'''
+# 'SELECT COUNT(*) AS TotalAlbums\nFROM Album;'
 
 # Streamlit app
-st.set_page_config(page_title="Pharmacist Assistant", page_icon=":-)")
+st.set_page_config(page_title="Pharmacist Assistant v2", page_icon=":-)")
 st.header("Your AI-based pharmacist")
 st.write(
     """Hi. I am an agent powered by Neodata.
@@ -121,10 +110,6 @@ with st.sidebar:
     st.markdown("Nurofen")
     st.markdown("Toradol")
 
-#     st.divider()
-    
-#     st.markdown("Chiedimi i contatti della segreteria!")
-
 
 if prompt := st.chat_input("What is up?", key="first_question"):
     st.session_state.messages.append({"role": "user", "content": prompt})
@@ -133,17 +118,9 @@ if prompt := st.chat_input("What is up?", key="first_question"):
 
     with st.chat_message("assistant"):
         
-        stream_handler = StreamHandler(st.empty())
-        # Execute the agent with chat history
-        result = agent_executor(
-            {
-                "input": prompt,
-                "chat_history": [{"role": m["role"], "content": m["content"]} for m in st.session_state.messages],
-            },
-            callbacks=[stream_handler],
-        )
-        print(result)
-        response = result.get("output")
+        response = db_chain(prompt) 
+        #rint(result)
 
     st.session_state.messages.append({"role": "assistant", "content": response})
 #    st.chat_message("assistant").markdown(response)
+'''
