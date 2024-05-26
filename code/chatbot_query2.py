@@ -41,7 +41,7 @@ db=SQLDatabase(db_engine)
 llm=ChatOpenAI(temperature=0.0,model="gpt-4o")
 sql_toolkit=SQLDatabaseToolkit(db=db,llm=llm)
 sql_toolkit.get_tools()
-
+ 
 prompt=ChatPromptTemplate.from_messages(
     [
         ("system",

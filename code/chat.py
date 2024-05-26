@@ -1,3 +1,12 @@
+# %%
+from langchain.agents import create_sql_agent
+from langchain.agents.agent_toolkits import SQLDatabaseToolkit
+from langchain.agents.agent_types import AgentType
+from langchain.chat_models import ChatOpenAI
+from langchain.sql_database import SQLDatabase
+from langchain.prompts.chat import ChatPromptTemplate
+from sqlalchemy import create_engine
+from dotenv import load_dotenv, find_dotenv
 
 from dotenv import load_dotenv, find_dotenv
 from langchain_community.tools.tavily_search import TavilySearchResults
@@ -17,10 +26,15 @@ import streamlit as st
 from langchain.callbacks.base import BaseCallbackHandler
 from langchain_community.utilities import SQLDatabase
 
+load_dotenv(dotenv_path='info.env')
 
+host = 'sql8.freesqldatabase.com'  # Or your MySQL server IP address
+port = '3306'  # Default MySQL port
+user = 'sql8709427'  # MySQL username
+password = 'TdVxdLEFft'  # MySQL password
+database = 'sql8709427'  # MySQL database name
+mysql_uri = f'mysql+mysqlconnector://{user}:{password}@{host}:{port}/{database}'
 
-# PINECONE_API_KEY = 'dd947cd1-d0b1-481c-8c93-5d2d9a178602' orazio
-# Streaming Handler
 class StreamHandler(BaseCallbackHandler):
     def __init__(
         self, container: st.delta_generator.DeltaGenerator, initial_text: str = ""
@@ -40,19 +54,16 @@ class StreamHandler(BaseCallbackHandler):
         self.text += token
         self.container.markdown(self.text)
 
-
-load_dotenv(dotenv_path='info.env')
+db_engine=create_engine(mysql_uri)
+db=SQLDatabase(db_engine)
 
 # retrive Pinecone vectorDB
 vector = PineconeVectorStore(embedding=OpenAIEmbeddings(),  index_name=os.getenv('PINECONE_INDEX_NAME'))
-
-# set  searchtype as :
-#   The Maximal Marginal Relevance (MMR) criterion strives to reduce redundancy while maintaining query relevance in re-ranking retrieved documents - Source
-
 retriever = vector.as_retriever(search_type="mmr", search_kwargs={"k": 6})
 
-# Create tools
-# set the retriver tool provinding a name and description about what knowledge will be searched  
+model=ChatOpenAI(temperature=0.0,model="gpt-4o")
+sql_toolkit=SQLDatabaseToolkit(db=db,llm=model)
+sql_toolkit.get_tools()
 
 # used to retrive info using rag for foglietti illustrativi
 retriever_tool = create_retriever_tool(
@@ -61,22 +72,21 @@ retriever_tool = create_retriever_tool(
     "Helps human interlocutors in finding the best medication that can counteract their symptoms.",
 )
 
-# Search tool
-# it's used to retrive info over internet
-# search = TavilySearchResults(max_results=3)
-# tools = [search, retriever_tool]
+sql_tool = sql_toolkit.get_tools()
 
+tools = [retriever_tool] + sql_tool
+# %%
 
-tools = [retriever_tool]
-# Initialize the model
-model = ChatOpenAI(model="gpt-4o", streaming=True)
-
-# Define the prompt template
 prompt = ChatPromptTemplate.from_messages(
-    [
-        (
-            "system",
-            "You are a pharmacist. Answer always in the language of the question. If you don't know the answer, just say 'I don't know', don't invent the answer!",
+        [
+        ("system", "You are a very intelligent system. Your first aim is to identify the correct type of agent to use to answer to the user question. \
+                    Once identified, be that agent! The questions could be either or a mysql query or informative query. \
+                    If you recognize a mysql query, identify relevant questions from user and converting into sql queries to generate correct answer. \
+                    Please use the below context to write the microsoft sql queries , dont use mysql queries. \
+                        MySQL-context: you must query against the connected database, it has total 1 tables , this is transactions transaction table has \
+                        ['Date', 'Codice AIC', 'Quantity', 'Principio Attivo', 'Descrizione Gruppo', 'Denominazione e Confezione', 'Prezzo al pubblico', \
+                        'Titolare AIC', 'Codice Gruppo Equivalenza']. \
+                    On the other side, if you recognize a informative, read the pdfs and use the retrivel tool to helps human interlocutors in finding the best medication that can counteract their symptoms."
         ),
         ("placeholder", "{chat_history}"),
         ("human", "{input}"),
@@ -84,10 +94,9 @@ prompt = ChatPromptTemplate.from_messages(
     ]
 )
 
-# Create the agent that decide what tools to call
-# Tool calling allows a model to detect when one or more tools should be called and respond with the inputs that should be passed to those tools.
 agent = create_tool_calling_agent(model, tools, prompt)
 agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
+
 
 # Streamlit app
 st.set_page_config(page_title="Pharmacist Assistant", page_icon=":-)")
@@ -114,11 +123,8 @@ with st.sidebar:
     st.markdown("Tachipirina")
     st.markdown("Nurofen")
     st.markdown("Toradol")
-
 #     st.divider()
-    
 #     st.markdown("Chiedimi i contatti della segreteria!")
-
 
 if prompt := st.chat_input("What is up?", key="first_question"):
     st.session_state.messages.append({"role": "user", "content": prompt})
@@ -136,7 +142,7 @@ if prompt := st.chat_input("What is up?", key="first_question"):
             },
             callbacks=[stream_handler],
         )
-        print(result)
+#        print(result)
         response = result.get("output")
 
     st.session_state.messages.append({"role": "assistant", "content": response})
