@@ -27,11 +27,11 @@ from langchain_community.utilities import SQLDatabase
 
 print(load_dotenv(find_dotenv('info.env')))
 
-host = 'localhost'  # Or your MySQL server IP address
-port = '3307'  # Default MySQL port
-user = 'root'  # MySQL username
-password = ''  # MySQL password
-database = 'farmaci'  # MySQL database name
+host = 'sql8.freesqldatabase.com'  # Or your MySQL server IP address
+port = '3306'  # Default MySQL port
+user = 'sql8709427'  # MySQL username
+password = 'TdVxdLEFft'  # MySQL password
+database = 'sql8709427'  # MySQL database name
 mysql_uri = f'mysql+mysqlconnector://{user}:{password}@{host}:{port}/{database}'
 
 db_engine=create_engine(mysql_uri)
