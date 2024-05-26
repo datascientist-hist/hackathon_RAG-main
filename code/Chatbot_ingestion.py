@@ -15,7 +15,8 @@ import os
 import streamlit as st
 from langchain.callbacks.base import BaseCallbackHandler
 
-load_dotenv(dotenv_path='info.env')
+# load_dotenv(dotenv_path='info.env')
+load_dotenv(find_dotenv('info.env'))
 
 os.getenv('OPENAI_API_KEY')
 os.getenv('PINECONE_API_KEY')
