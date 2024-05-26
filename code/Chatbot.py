@@ -16,6 +16,7 @@ import os
 import streamlit as st
 from langchain.callbacks.base import BaseCallbackHandler
 
+# PINECONE_API_KEY = 'dd947cd1-d0b1-481c-8c93-5d2d9a178602' orazio
 # Streaming Handler
 class StreamHandler(BaseCallbackHandler):
     def __init__(
@@ -37,42 +38,32 @@ class StreamHandler(BaseCallbackHandler):
         self.container.markdown(self.text)
 
 
-# load_dotenv(find_dotenv('info.env'))
-
-# load_dotenv(find_dotenv())
 load_dotenv(dotenv_path='info.env')
 
-# Load and prepare documents
-loader = pdf.PyPDFDirectoryLoader(
-    '../pdf'
-#        [f'../pdf/{x}' for x in os.listdir('../pdf')]
-)
-# loader = WebBaseLoader(
-#     [
-#         "https://web.dmi.unict.it/corsi/l-31/insegnamenti?seuid=CD1ABF9F-5308-450E-813E-60B84F9EDAA5",
-#         "https://web.dmi.unict.it/corsi/l-31/insegnamenti?seuid=6E03B0E2-5E93-43C5-BBFB-E4D6446DB180",
-#         "https://web.dmi.unict.it/corsi/l-31/insegnamenti?seuid=81E1DC57-5DC2-46ED-84AF-3C8BB46F3F49",
-#         "https://web.dmi.unict.it/corsi/l-31/contatti",
-#     ]
-# )
-docs = loader.load()
-documents = RecursiveCharacterTextSplitter(
-    chunk_size=500, chunk_overlap=100
-).split_documents(docs)
-vector = PineconeVectorStore.from_documents(documents, OpenAIEmbeddings(), index_name=os.getenv('PINECONE_INDEX_NAME'))
-# vector = Chroma.from_documents(documents, OpenAIEmbeddings())
+# retrive Pinecone vectorDB
+vector = PineconeVectorStore(embedding=OpenAIEmbeddings(),  index_name=os.getenv('PINECONE_INDEX_NAME'))
+
+# set  searchtype as :
+#   The Maximal Marginal Relevance (MMR) criterion strives to reduce redundancy while maintaining query relevance in re-ranking retrieved documents - Source
+
 retriever = vector.as_retriever(search_type="mmr", search_kwargs={"k": 6})
 
 # Create tools
+# set the retriver tool provinding a name and description about what knowledge will be searched  
+
+# used to retrive info using rag for foglietti illustrativi
 retriever_tool = create_retriever_tool(
     retriever,
     "AI-pharmacist",
     "Helps human interlocutors in finding the best medication that can counteract their symptoms.",
 )
-# Search tool
-search = TavilySearchResults(max_results=3)
-tools = [search, retriever_tool]
 
+# Search tool
+# it's used to retrive info over internet
+search = TavilySearchResults(max_results=3)
+# tools = [search, retriever_tool]
+
+tools = [retriever_tool]
 # Initialize the model
 model = ChatOpenAI(model="gpt-4o", streaming=True)
 
@@ -89,7 +80,8 @@ prompt = ChatPromptTemplate.from_messages(
     ]
 )
 
-# Create the agent
+# Create the agent that decide what tools to call
+# Tool calling allows a model to detect when one or more tools should be called and respond with the inputs that should be passed to those tools.
 agent = create_tool_calling_agent(model, tools, prompt)
 agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
 
@@ -113,11 +105,11 @@ for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# with st.sidebar:
-#     st.header("I tuoi corsi")
-#     st.markdown("- INTRODUZIONE AL DATA MINING")
-#     st.markdown("- BASI DI DATI A - L")
-#     st.markdown("- ALGEBRA LINEARE E GEOMETRIA A - E")
+with st.sidebar:
+    st.header("Farmaci acquisiti")
+    st.markdown("Tachipirina")
+    st.markdown("Nurofen")
+    st.markdown("Toradol")
 
 #     st.divider()
     
