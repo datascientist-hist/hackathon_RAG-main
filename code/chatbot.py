@@ -22,6 +22,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain.agents import create_tool_calling_agent
 from langchain.agents import AgentExecutor
 import os
+import glob
 import streamlit as st
 from langchain.callbacks.base import BaseCallbackHandler
 from langchain_community.utilities import SQLDatabase
@@ -96,8 +97,45 @@ prompt = ChatPromptTemplate.from_messages(
 )
 
 agent = create_tool_calling_agent(model, tools, prompt)
-agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
+agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True, return_intermediate_steps=True)
 
+
+
+def find_file_in_folder(filename):
+    folder_path = os.path.abspath('../pdf')
+    # Search for the file in the specified folder and its subfolders
+    search_pattern = os.path.join(folder_path, '**', filename)
+    found_files = glob.glob(search_pattern, recursive=True)
+
+    if found_files:
+        # Return the complete paths of the found files
+        return found_files
+    else:
+        return None
+
+def source_files(documents):
+    # List to store extracted metadata
+    metadata_list = []
+
+    # Extract metadata from each document
+    for document in documents:
+        metadata = {
+            'source': document.metadata.get('source'),
+            'page': document.metadata.get('page')
+        }
+        metadata_list.append(metadata)
+    return metadata_list
+
+def format_metadata_to_markdown(metadata_list):
+    markdown_string = "\n#### Sources used:\n"
+    unique_path = [ metadata['source'] for metadata in metadata_list]
+    unique_path = set(unique_path)
+    for idx, metadata in enumerate(unique_path):
+        complete_path =  find_file_in_folder(metadata)
+        complete_path = complete_path[0].replace("\\", "/") 
+        #markdown_string += f"- <a href='file://{complete_path[0]}' target='_blank'>path: {metadata}</a>\n"
+        markdown_string += f"- [file_{idx}: {metadata}](file://{complete_path})\n"
+    return markdown_string
 
 # Streamlit app
 st.set_page_config(page_title="Pharmacist Assistant", page_icon=":pill:")
@@ -155,6 +193,19 @@ if prompt := st.chat_input("What is up?", key="first_question"):
         )
 #        print(result)
         response = result.get("output")
+        try:
+            if (result['intermediate_steps'][0][0].tool == 'AI-pharmacist'):
+                source = source_files(retriever.invoke(prompt))
+                print(source)
+                markdown_s = format_metadata_to_markdown(source)
+                print(markdown_s)
+                response += markdown_s
+                st.markdown(markdown_s, unsafe_allow_html=True)
+                
+                
+        except:
+            
+            pass
 
     st.session_state.messages.append({"role": "assistant", "content": response})
 #    st.chat_message("assistant").markdown(response)
