@@ -102,26 +102,6 @@ agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
 # Streamlit app
 st.set_page_config(page_title="Pharmacist Assistant", page_icon=":pill:")
 st.header("AI Pharmacist Assistant")
-st.markdown(
-    """
-    <style>
-    body {
-        background-color: white;
-        color: lightgreen;
-    }
-    .stTextInput > div > div > input {
-        color: white;
-    }
-    .stTextInput > div > div > label {
-        color: white;
-    }
-    .stMarkdown {
-        color: white;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
 
 st.write(
     """
