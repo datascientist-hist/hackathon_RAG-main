@@ -36,3 +36,13 @@ cd code/
 streamlit run chatbot.py
 ```
 
+### Examples
+
+Question 1: 'Un paziente presenta la febbre, che farmaco consigliare per alleviarla?'
+![](media/Demo_AI-Pharmacist-1.gif)
+
+Question 2: 'Qual è il prodotto più venduto di questo mese?'
+![](media/Demo_AI-Pharmacist-2.gif)
+
+Question 3: 'Quanto ne abbiamo guadagnato?'
+![](media/Demo_AI-Pharmacist-3.gif)
