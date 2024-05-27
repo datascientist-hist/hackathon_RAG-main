@@ -14,3 +14,25 @@ In addition, interaction with the chatbot takes place through natural language, 
 
 Thanks to its advanced functionality for collecting and analysing sales statistics, the chatbot enables more informed and strategic stock management, further contributing to the operational efficiency of the pharmacy.
 
+### How it works
+
+The agent is designed to determine whether the question asked requires a technical answer or the execution of an SQL query. Depending on the nature of the question, the agent chooses the appropriate tool to use. 
+
+If the question requires pharmaceutical advice, the agent uses the `pharmacist tool`, which is designed to recommend the most suitable drug for each patient, based on their physical condition and specific symptoms. 
+
+If, on the other hand, the question requires data processing, the agent uses the `SQL tool`, which interprets the semantics of the question and executes an SQL query on an online server to provide the correct answer.
+
+### How to use it
+
+To run and use our chatbot, please ensure that all dependencies are correctly installed.
+
+```{bash}
+pip install code/requirements.txt
+```
+Start AI Pharmacist Assistent Chatbot by executing the following command:
+
+```{bash}
+cd code/
+streamlit run chatbot.py
+```
+

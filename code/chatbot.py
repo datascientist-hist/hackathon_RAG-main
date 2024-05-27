@@ -27,9 +27,10 @@ import streamlit as st
 from langchain.callbacks.base import BaseCallbackHandler
 from langchain_community.utilities import SQLDatabase
 
-# load_dotenv(dotenv_path='info.env')
+# %% load_dotenv(dotenv_path='info.env')
 load_dotenv(find_dotenv('info.env'))
 
+# %% set db
 host = 'sql8.freesqldatabase.com'  # Or your MySQL server IP address
 port = '3306'  # Default MySQL port
 user = 'sql8709427'  # MySQL username
@@ -37,6 +38,10 @@ password = 'TdVxdLEFft'  # MySQL password
 database = 'sql8709427'  # MySQL database name
 mysql_uri = f'mysql+mysqlconnector://{user}:{password}@{host}:{port}/{database}'
 
+db_engine=create_engine(mysql_uri)
+db=SQLDatabase(db_engine)
+
+# %% define agent
 class StreamHandler(BaseCallbackHandler):
     def __init__(
         self, container: st.delta_generator.DeltaGenerator, initial_text: str = ""
@@ -56,14 +61,11 @@ class StreamHandler(BaseCallbackHandler):
         self.text += token
         self.container.markdown(self.text)
 
-db_engine=create_engine(mysql_uri)
-db=SQLDatabase(db_engine)
-
 # retrive Pinecone vectorDB
 vector = PineconeVectorStore(embedding=OpenAIEmbeddings(),  index_name=os.getenv('PINECONE_INDEX_NAME'))
 retriever = vector.as_retriever(search_type="mmr", search_kwargs={"k": 6})
 
-model=ChatOpenAI(temperature=0.0,model="gpt-4o")
+model=ChatOpenAI(temperature=0.0,model="gpt-3.5-turbo")
 sql_toolkit=SQLDatabaseToolkit(db=db,llm=model)
 sql_toolkit.get_tools()
 
@@ -75,9 +77,7 @@ retriever_tool = create_retriever_tool(
 )
 
 sql_tool = sql_toolkit.get_tools()
-
 tools = [retriever_tool] + sql_tool
-# %%
 
 prompt = ChatPromptTemplate.from_messages(
         [
@@ -97,16 +97,13 @@ prompt = ChatPromptTemplate.from_messages(
 )
 
 agent = create_tool_calling_agent(model, tools, prompt)
-agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True, return_intermediate_steps=True)
-
-
+agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True, return_intermediate_steps=True, handle_parsing_errors=True)
 
 def find_file_in_folder(filename):
     folder_path = os.path.abspath('../pdf')
     # Search for the file in the specified folder and its subfolders
-    search_pattern = os.path.join(folder_path, '**', filename)
+    search_pattern = os.path.join(folder_path, filename)
     found_files = glob.glob(search_pattern, recursive=True)
-
     if found_files:
         # Return the complete paths of the found files
         return found_files
@@ -116,7 +113,6 @@ def find_file_in_folder(filename):
 def source_files(documents):
     # List to store extracted metadata
     metadata_list = []
-
     # Extract metadata from each document
     for document in documents:
         metadata = {
@@ -127,17 +123,15 @@ def source_files(documents):
     return metadata_list
 
 def format_metadata_to_markdown(metadata_list):
-    markdown_string = "\n#### Sources used:\n"
-    unique_path = [ metadata['source'] for metadata in metadata_list]
+    markdown_string = "\n###### Sources used:\n"
+    unique_path = [metadata['source'] for metadata in metadata_list]
     unique_path = set(unique_path)
     for idx, metadata in enumerate(unique_path):
-        complete_path =  find_file_in_folder(metadata)
-        complete_path = complete_path[0].replace("\\", "/") 
-        #markdown_string += f"- <a href='file://{complete_path[0]}' target='_blank'>path: {metadata}</a>\n"
+        complete_path =  find_file_in_folder(metadata.split('\\')[-1])
+        complete_path = complete_path[0].replace("\\", "/")
         markdown_string += f"- [file_{idx}: {metadata}](file://{complete_path})\n"
     return markdown_string
 
-# Streamlit app
 st.set_page_config(page_title="Pharmacist Assistant", page_icon=":pill:")
 st.header("AI Pharmacist Assistant")
 
@@ -153,8 +147,6 @@ st.write(
     Rely on me to optimise your work and improve your efficiency. Enjoy!
     """
 )
-
-
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
@@ -175,13 +167,11 @@ with st.sidebar:
     st.divider()
     st.write("[![view source code ](https://img.shields.io/badge/view_source_code-gray?logo=github)](https://github.com/datascientist-hist/hackathon_RAG-main)")
 
-if prompt := st.chat_input("What is up?", key="first_question"):
+if prompt := st.chat_input("What can I help you with?", key="first_question"):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
-
     with st.chat_message("assistant"):
-        
         stream_handler = StreamHandler(st.empty())
         # Execute the agent with chat history
         result = agent_executor(
@@ -196,16 +186,10 @@ if prompt := st.chat_input("What is up?", key="first_question"):
         try:
             if (result['intermediate_steps'][0][0].tool == 'AI-pharmacist'):
                 source = source_files(retriever.invoke(prompt))
-                print(source)
                 markdown_s = format_metadata_to_markdown(source)
-                print(markdown_s)
                 response += markdown_s
                 st.markdown(markdown_s, unsafe_allow_html=True)
-                
-                
         except:
-            
             pass
-
     st.session_state.messages.append({"role": "assistant", "content": response})
 #    st.chat_message("assistant").markdown(response)
